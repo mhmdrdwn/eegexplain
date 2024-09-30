@@ -143,7 +143,13 @@ def build_data(raw_data, size, cal_conn=None,  bands=True):
         filtered_eeg = []
         
         try:
-            data_epochs = np.load(file)
+            data = mne.io.read_raw(file, verbose=False, preload=True)
+            data.filter(l_freq=0.5, h_freq=45, verbose=False)#.resample(sfreq=128)
+            data_epochs = mne.make_fixed_length_epochs(data, duration=2.5, overlap=1.25, verbose=False)
+            data_epochs = data_epochs.get_data()[:, :-2 , :]
+            data_epochs = np.moveaxis(data_epochs, 0, 1)
+            data_epochs = detrend(data_epochs, type="constant", axis=-1)
+            
             # freq domain features
             # delta (0.5–4 Hz), theta (4–8 Hz), alpha (8–13 Hz), beta (13–30 Hz), and gamma (30–45 Hz).
             freq_ranges = [[0.5, 4], [4, 8], [8, 13], [13, 30], [30, 45]]
@@ -201,7 +207,7 @@ def build_data(raw_data, size, cal_conn=None,  bands=True):
                         #ch_features = []
 
                         # differential entropy
-                        ch_features.append(differential_entropy(filtered_ch))
+                        ch_features.append(np.abs(differential_entropy(filtered_ch)))
 
                         # Permutation entropy
                         entropy = ant.perm_entropy(filtered_ch, normalize=True)
